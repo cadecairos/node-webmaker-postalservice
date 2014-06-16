@@ -40,6 +40,7 @@ module.exports = function(options) {
   });
 
   var templates = {
+    oneTimePasswordEmail: nunjucksEnv.getTemplate("one_time_password.html"),
     createEventEmail: nunjucksEnv.getTemplate("create_event.html"),
     mofoStaffEmail: nunjucksEnv.getTemplate("mofo_staff_new_event.html"),
     welcomeEmail: nunjucksEnv.getTemplate("welcome.html"),
@@ -48,6 +49,42 @@ module.exports = function(options) {
   };
 
   return {
+    sendOneTimePasswordEmail: function(options, callback) {
+      var html = templates.oneTimePasswordEmail.render({
+        username: options.username,
+        token: options.token
+      });
+      premailer.prepare({
+        html: html
+      }, function(err, email) {
+        if (err) {
+          return callback(err);
+        }
+
+        ses.sendEmail({
+          Source: "Webmaker <no-reply@webmaker.org>",
+          Destination: {
+            ToAddresses: [options.to],
+          },
+          Message: {
+            Subject: {
+              Data: "Login Request For " + options.username,
+              Charset: "utf8"
+            },
+            Body: {
+              Text: {
+                Data: email.text,
+                Charset: "utf8"
+              },
+              Html: {
+                Data: email.html,
+                Charset: "utf8"
+              }
+            }
+          }
+        }, callback);
+      });
+    },
     sendCreateEventEmail: function(options, callback) {
       options.locale = isLanguageSupport(options.locale) ? options.locale : "en-US";
       var html = templates.createEventEmail.render({
